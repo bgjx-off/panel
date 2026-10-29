@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Test Game Jxploit</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            touch-action: none;
+            background-color: black;
+        }
+        /* Splash Screen Overlay (Video-like 2D Racing Animation) */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #0a0f1a 0%, #03060c 100%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(2px);
+            transition: opacity 0.8s ease;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        #splash-canvas {
+            width: 90%;
+            max-width: 500px;
+            height: auto;
+            background: #0a1420;
+            border-radius: 12px;
+            box-shadow: 0 0 0 4px #ff3366, 0 0 0 8px rgba(0,0,0,0.5);
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+        canvas#splash-canvas {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            display: block;
+            margin: 0 auto;
+        }
+        .splash-text {
+            margin-top: 24px;
+            color: #ffcc88;
+            text-shadow: 3px 3px 0 #aa3355;
+            font-size: 1.5rem;
+            letter-spacing: 4px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 24px;
+            border-left: 4px solid #ff3366;
+            border-right: 4px solid #ff3366;
+            font-weight: bold;
+        }
+        .splash-sub {
+            color: #aaa;
+            font-size: 0.8rem;
+            margin-top: 12px;
+            background: rgba(0,0,0,0.5);
+            padding: 4px 12px;
+        }
+        #start-hint {
+            animation: pulse 1.2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.5; text-shadow: 0 0 0px #ff3366; }
+            100% { opacity: 1; text-shadow: 0 0 8px #ff3366; }
+        }
+        /* Info panel retro */
+        #info {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 10;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 16px;
+            border-left: 4px solid #ff3366;
+            color: #fff;
+            font-weight: bold;
+            letter-spacing: 1px;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            font-size: 14px;
+            text-shadow: 2px 2px 0 #000;
+        }
+        #score-container {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 10;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 16px;
+            text-align: right;
+            border-right: 4px solid #ffcc00;
+            color: #ffcc00;
+            font-weight: bold;
+            font-size: 22px;
+            font-family: monospace;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+        }
+        #score-label {
+            font-size: 12px;
+            color: #ccc;
+            letter-spacing: 2px;
+        }
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            border: 3px solid #ff3366;
+            padding: 20px 40px;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            font-family: monospace;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 20px rgba(255,51,102,0.5);
+            min-width: 260px;
+        }
+        #game-over h2 {
+            margin: 0;
+            color: #ff3366;
+            font-size: 28px;
+            letter-spacing: 3px;
+        }
+        #final-score {
+            color: #ffcc00;
+            font-size: 36px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        #restart-btn {
+            background: #ff3366;
+            border: none;
+            color: black;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 20px;
+            padding: 8px 20px;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 0 10px rgba(255,51,102,0.8);
+        }
+        #restart-btn:hover {
+            background: white;
+            color: #ff3366;
+            transform: scale(1.02);
+        }
+        .controls-hint {
+            position: absolute;
+            bottom: 15px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: rgba(255,255,255,0.6);
+            background: rgba(0,0,0,0.5);
+            padding: 5px;
+            font-size: 12px;
+            font-family: monospace;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .scanline {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 2px, transparent 2px, transparent 4px);
+            pointer-events: none;
+            z-index: 5;
+        }
+        @media (max-width: 600px) {
+            #score-container { font-size: 18px; padding: 4px 12px; top: 8px; right: 8px; }
+            #info { font-size: 10px; top: 8px; left: 8px; }
+            .controls-hint { font-size: 9px; }
+            .splash-text { font-size: 1.2rem; }
+        }
+        /* barrier effect */
+        .retro-glitch {
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="splash-screen">
+        <canvas id="splash-canvas" width="800" height="450"></canvas>
+        <div class="splash-text" id="start-hint">Tap To Start</div>
+        <div class="splash-sub">JXPLOIT TEST GAME WEB</div>
+    </div>
+    <div id="info">
+        JXPLOIT RACE GAME TEST
+    </div>
+    <div id="score-container">
+        <div id="score-label">Overtakes:</div>
+        <div id="score">0</div>
+    </div>
+    <div id="game-over">
+        <h2>GAME OVER</h2>
+        <div>FINAL SCORE</div>
+        <div id="final-score">0</div>
+        <button id="restart-btn">RESTART</button>
+        <div style="font-size: 12px; margin-top:5px;">Click Restart To Play Again.</div>
+    </div>
+    <div class="controls-hint">
+       Move The Car Using Your Hand Bro HAHA
+    </div>
+    <div class="scanline"></div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- Global state ---
+        let splashActive = true;
+        let gameActive = false;
+        let nightMode = false;
+        let scoreThresholdPassed = false;
+        
+        // --- Splash Screen 2D Animation (2 Mobil balapan di lintasan lurus) ---
+        const splashCanvas = document.getElementById('splash-canvas');
+        const ctx = splashCanvas.getContext('2d');
+        let splashAnimFrame;
+        let roadOffset = 0;
+        
+        function drawSplashAnimation() {
+            if (!splashCanvas) return;
+            const w = splashCanvas.width;
+            const h = splashCanvas.height;
+            ctx.clearRect(0, 0, w, h);
+            
+            // retro road gradient
+            ctx.fillStyle = "#1a2a2a";
+            ctx.fillRect(0, 0, w, h);
+            // jalan
+            ctx.fillStyle = "#2f3e3e";
+            ctx.fillRect(w*0.1, 0, w*0.8, h);
+            // garis marka
+            ctx.strokeStyle = "#e0e060";
+            ctx.lineWidth = 8;
+            ctx.setLineDash([30, 40]);
+            for(let i = 0; i < 12; i++) {
+                let y = (roadOffset + i * 50) % (h + 100) - 80;
+                ctx.beginPath();
+                ctx.moveTo(w/2, y);
+                ctx.lineTo(w/2, y+35);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+            // garis pinggir
+            ctx.strokeStyle = "#c0c0a0";
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(w*0.15, 0);
+            ctx.lineTo(w*0.15, h);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(w*0.85, 0);
+            ctx.lineTo(w*0.85, h);
+            ctx.stroke();
+            
+            // Mobil 1 (merah) - kiri
+            ctx.fillStyle = "#dd3344";
+            ctx.shadowBlur = 0;
+            let car1Y = (h - 120 + Math.sin(Date.now() * 0.006) * 8) % (h + 80) - 40;
+            let car2Y = (h - 70 + Math.cos(Date.now() * 0.0055) * 10) % (h + 100) - 60;
+            if(car1Y < -80) car1Y += h+100;
+            if(car2Y < -80) car2Y += h+100;
+            // car 1 (kiri)
+            ctx.fillStyle = "#ff4444";
+            ctx.fillRect(w*0.25 - 20, car1Y, 40, 28);
+            ctx.fillStyle = "#222222";
+            ctx.fillRect(w*0.25 - 18, car1Y+6, 36, 8);
+            ctx.fillStyle = "#ffaa66";
+            ctx.fillRect(w*0.25 - 12, car1Y+2, 8, 8);
+            ctx.fillRect(w*0.25 + 4, car1Y+2, 8, 8);
+            // roda
+            ctx.fillStyle = "#111";
+            ctx.fillRect(w*0.25 - 28, car1Y+5, 8, 18);
+            ctx.fillRect(w*0.25 + 20, car1Y+5, 8, 18);
+            
+            // Mobil 2 (biru) - kanan
+            ctx.fillStyle = "#3399ff";
+            ctx.fillRect(w*0.75 - 20, car2Y, 40, 28);
+            ctx.fillStyle = "#222";
+            ctx.fillRect(w*0.75 - 18, car2Y+6, 36, 8);
+            ctx.fillStyle = "#aaffff";
+            ctx.fillRect(w*0.75 - 12, car2Y+2, 8, 8);
+            ctx.fillRect(w*0.75 + 4, car2Y+2, 8, 8);
+            ctx.fillStyle = "#111";
+            ctx.fillRect(w*0.75 - 28, car2Y+5, 8, 18);
+            ctx.fillRect(w*0.75 + 20, car2Y+5, 8, 18);
+            
+            // efek kecepatan
+            ctx.fillStyle = "rgba(255,255,200,0.3)";
+            for(let i=0;i<12;i++) {
+                ctx.fillRect(w*0.5 - 5 + Math.sin(Date.now()*0.01+i)*4, (roadOffset + i*30)%h, 3, 12);
+            }
+            roadOffset = (roadOffset + 8) % 100;
+            requestAnimationFrame(drawSplashAnimation);
+        }
+        
+        drawSplashAnimation();
+        
+        // --- Three.js Setup (PS1 Retro) ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a2a3a);
+        scene.fog = new THREE.FogExp2(0x1a2a3a, 0.008);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.3, 100);
+        camera.position.set(0, 3.5, 7);
+        camera.lookAt(0, 0.5, 2);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+        
+        // --- Lighting (dynamic for day/night)---
+        const ambientLight = new THREE.AmbientLight(0x5a6a8a, 0.9);
+        scene.add(ambientLight);
+        const mainLight = new THREE.DirectionalLight(0xffeedd, 1.3);
+        mainLight.position.set(5, 8, 3);
+        scene.add(mainLight);
+        const fillLight = new THREE.PointLight(0x88aacc, 0.6);
+        fillLight.position.set(-2, 3, 4);
+        scene.add(fillLight);
+        const backLight = new THREE.PointLight(0xffaa77, 0.5);
+        backLight.position.set(0, 2, -3);
+        scene.add(backLight);
+        
+        // Stars for night mode
+        let starField = null;
+        function createStars() {
+            const starGeo = new THREE.BufferGeometry();
+            const starCount = 800;
+            const positions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount; i++) {
+                positions[i*3] = (Math.random() - 0.5) * 200;
+                positions[i*3+1] = (Math.random() - 0.5) * 40 + 5;
+                positions[i*3+2] = (Math.random() - 0.5) * 80 - 40;
+            }
+            starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true });
+            const stars = new THREE.Points(starGeo, starMat);
+            return stars;
+        }
+        
+        // --- Road & Barriers (Pembatas pinggir jalan)---
+        const createRoadTexture = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx2d = canvas.getContext('2d');
+            ctx2d.fillStyle = '#2a2a2e';
+            ctx2d.fillRect(0, 0, canvas.width, canvas.height);
+            ctx2d.strokeStyle = '#b8b8c8';
+            ctx2d.lineWidth = 18;
+            ctx2d.setLineDash([40, 60]);
+            ctx2d.beginPath();
+            ctx2d.moveTo(canvas.width/2, 0);
+            ctx2d.lineTo(canvas.width/2, canvas.height);
+            ctx2d.stroke();
+            ctx2d.setLineDash([]);
+            ctx2d.lineWidth = 12;
+            ctx2d.strokeStyle = '#c0c0c0';
+            ctx2d.beginPath();
+            ctx2d.moveTo(80, 0);
+            ctx2d.lineTo(80, canvas.height);
+            ctx2d.stroke();
+            ctx2d.beginPath();
+            ctx2d.moveTo(canvas.width-80, 0);
+            ctx2d.lineTo(canvas.width-80, canvas.height);
+            ctx2d.stroke();
+            for(let i=0;i<800;i++) {
+                ctx2d.fillStyle = `rgba(0,0,0,${Math.random() * 0.3})`;
+                ctx2d.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(1, 6);
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+            return texture;
+        };
+        
+        const roadTexture = createRoadTexture();
+        const roadMaterial = new THREE.MeshStandardMaterial({ map: roadTexture, side: THREE.DoubleSide, roughness: 0.8 });
+        const roadPlane = new THREE.Mesh(new THREE.PlaneGeometry(10, 40), roadMaterial);
+        roadPlane.rotation.x = -Math.PI / 2;
+        roadPlane.position.y = -0.1;
+        roadPlane.position.z = -5;
+        scene.add(roadPlane);
+        
+        // PINGGIR JALAN (Barrier blocks) - concrete retro
+        const barrierMat = new THREE.MeshStandardMaterial({ color: 0xaa8866, roughness: 0.7, flatShading: true });
+        for (let z = -22; z <= 10; z += 1.4) {
+            const leftBlock = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.8), barrierMat);
+            leftBlock.position.set(-3.9, 0.1, z);
+            scene.add(leftBlock);
+            const rightBlock = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.8), barrierMat);
+            rightBlock.position.set(3.9, 0.1, z);
+            scene.add(rightBlock);
+        }
+        // additional tire-like decoration
+        const tireMat = new THREE.MeshStandardMaterial({ color: 0x332211 });
+        for (let z = -20; z <= 8; z += 2.5) {
+            const tireL = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.2, 6), tireMat);
+            tireL.position.set(-4.2, 0.1, z);
+            scene.add(tireL);
+            const tireR = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.2, 6), tireMat);
+            tireR.position.set(4.2, 0.1, z);
+            scene.add(tireR);
+        }
+        
+        // --- Car Creator (low-poly retro)---
+        function createCar(color, isOpponent = true) {
+            const group = new THREE.Group();
+            const bodyGeo = new THREE.BoxGeometry(0.85, 0.4, 1.6);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.6, metalness: 0.3, flatShading: true });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.2;
+            group.add(body);
+            const roofGeo = new THREE.BoxGeometry(0.65, 0.3, 0.9);
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, flatShading: true });
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = 0.55;
+            group.add(roof);
+            const windowMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, flatShading: true });
+            const frontWind = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.15, 0.1), windowMat);
+            frontWind.position.set(0, 0.65, 0.65);
+            group.add(frontWind);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+            const wheelGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.2, 8);
+            const positions = [[-0.55, 0.1, 0.65], [0.55, 0.1, 0.65], [-0.55, 0.1, -0.65], [0.55, 0.1, -0.65]];
+            positions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.position.set(pos[0], pos[1], pos[2]);
+                group.add(wheel);
+            });
+            const lightMat = new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0x442200 });
+            const leftLight = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), lightMat);
+            leftLight.position.set(-0.35, 0.2, 0.85);
+            const rightLight = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), lightMat);
+            rightLight.position.set(0.35, 0.2, 0.85);
+            group.add(leftLight);
+            group.add(rightLight);
+            if (isOpponent) group.rotation.y = Math.PI;
+            return group;
+        }
+        
+        const playerCar = createCar(0xdd3344, false);
+        playerCar.position.set(0, 0.05, 1.8);
+        scene.add(playerCar);
+        
+        // --- Game Variables ---
+        let opponents = [];
+        let score = 0;
+        let spawnAccumulator = 0;
+        let baseSpawnDelay = 1.0;
+        let currentSpeed = 6.2;
+        let roadScrollSpeed = 0.8;
+        const minX = -3.2, maxX = 3.2;
+        let playerTargetX = 0;
+        let currentPlayerX = 0;
+        let isDragging = false;
+        
+        // Day/Night trigger score threshold
+        const NIGHT_SCORE_THRESHOLD = 18;
+        
+        function setDayNightMode(isNight) {
+            nightMode = isNight;
+            if (isNight) {
+                scene.background.setHex(0x030b1a);
+                scene.fog.color.setHex(0x030b1a);
+                ambientLight.intensity = 0.4;
+                mainLight.intensity = 0.6;
+                mainLight.color.setHex(0xccaa88);
+                fillLight.intensity = 0.3;
+                backLight.intensity = 0.8;
+                backLight.color.setHex(0xff8855);
+                if (!starField) {
+                    starField = createStars();
+                    scene.add(starField);
+                } else {
+                    starField.visible = true;
+                }
+            } else {
+                scene.background.setHex(0x1a2a3a);
+                scene.fog.color.setHex(0x1a2a3a);
+                ambientLight.intensity = 0.9;
+                mainLight.intensity = 1.3;
+                mainLight.color.setHex(0xffeedd);
+                fillLight.intensity = 0.6;
+                backLight.intensity = 0.5;
+                if (starField) starField.visible = false;
+            }
+        }
+        
+        // UI
+        const scoreElement = document.getElementById('score');
+        const gameOverDiv = document.getElementById('game-over');
+        const finalScoreSpan = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restart-btn');
+        const splashDiv = document.getElementById('splash-screen');
+        
+        function updateScoreUI() {
+            scoreElement.innerText = score;
+            let newSpeed = 6.2 + Math.floor(score / 8) * 0.9;
+            if (newSpeed > 12.8) newSpeed = 12.8;
+            currentSpeed = newSpeed;
+            baseSpawnDelay = Math.max(0.48, 1.0 - Math.floor(score / 15) * 0.07);
+            // Day/Night transition
+            if (!nightMode && score >= NIGHT_SCORE_THRESHOLD) {
+                setDayNightMode(true);
+            } else if (nightMode && score < NIGHT_SCORE_THRESHOLD) {
+                setDayNightMode(false);
+            }
+        }
+        
+        function spawnOpponent() {
+            if (!gameActive) return;
+            const randX = (Math.random() - 0.5) * 5.6;
+            const carColors = [0x3a86ff, 0x8338ec, 0xf4066e, 0xffbe0b, 0xfb5607, 0x9c89b8, 0x70d6ff];
+            const color = carColors[Math.floor(Math.random() * carColors.length)];
+            const car = createCar(color, true);
+            car.position.set(randX, 0.05, -12 - Math.random() * 5);
+            scene.add(car);
+            opponents.push({
+                mesh: car,
+                passedFlag: false,
+                zSpeed: currentSpeed
+            });
+        }
+        
+        function checkCollision(player, opponent) {
+            const pPos = player.position;
+            const oPos = opponent.position;
+            const pWidth = 0.9, pDepth = 1.7;
+            const oWidth = 0.9, oDepth = 1.7;
+            return (Math.abs(pPos.x - oPos.x) < (pWidth/2 + oWidth/2) && Math.abs(pPos.z - oPos.z) < (pDepth/2 + oDepth/2));
+        }
+        
+        function endGame() {
+            if (!gameActive) return;
+            gameActive = false;
+            finalScoreSpan.innerText = score;
+            gameOverDiv.style.display = 'flex';
+        }
+        
+        function resetGame() {
+            opponents.forEach(opp => scene.remove(opp.mesh));
+            opponents = [];
+            score = 0;
+            currentSpeed = 6.2;
+            baseSpawnDelay = 1.0;
+            updateScoreUI();
+            playerCar.position.x = 0;
+            currentPlayerX = 0;
+            playerTargetX = 0;
+            spawnAccumulator = 0;
+            gameOverDiv.style.display = 'none';
+            roadTexture.offset.y = 0;
+            // reset to day mode if night active
+            if (nightMode) setDayNightMode(false);
+            nightMode = false;
+            scoreThresholdPassed = false;
+        }
+        
+        // --- Input Handling ---
+        function handleMove(clientX) {
+            if (!gameActive) return;
+            const t = Math.min(1, Math.max(0, clientX / window.innerWidth));
+            playerTargetX = -3.2 + (t * 6.4);
+        }
+        
+        function onPointerMove(e) {
+            if (!isDragging || !gameActive) return;
+            let clientX = e.clientX;
+            if (e.touches) clientX = e.touches[0].clientX;
+            handleMove(clientX);
+        }
+        function onPointerStart(e) {
+            if (!gameActive) return;
+            e.preventDefault();
+            isDragging = true;
+            let clientX = e.clientX;
+            if (e.touches) clientX = e.touches[0].clientX;
+            handleMove(clientX);
+        }
+        function onPointerEnd() { isDragging = false; }
+        
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mousedown', onPointerStart);
+        window.addEventListener('mouseup', onPointerEnd);
+        window.addEventListener('touchmove', onPointerMove, { passive: false });
+        window.addEventListener('touchstart', onPointerStart, { passive: false });
+        window.addEventListener('touchend', onPointerEnd);
+        window.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            if (e.key === 'ArrowLeft') { playerTargetX = Math.max(minX, playerTargetX - 0.8); e.preventDefault(); }
+            else if (e.key === 'ArrowRight') { playerTargetX = Math.min(maxX, playerTargetX + 0.8); e.preventDefault(); }
+        });
+        
+        // --- Start Game after splash ---
+        function startGame() {
+            splashActive = false;
+            splashDiv.style.opacity = '0';
+            setTimeout(() => {
+                splashDiv.style.display = 'none';
+            }, 800);
+            gameActive = true;
+            resetGame();
+            // ensure lighting daytime
+            setDayNightMode(false);
+        }
+        
+        splashDiv.addEventListener('click', () => {
+            if (splashActive) startGame();
+        });
+        
+        // --- Dust particles ---
+        const dustGeo = new THREE.BufferGeometry();
+        const dustCount = 200;
+        const dustPositions = new Float32Array(dustCount * 3);
+        for (let i = 0; i < dustCount; i++) {
+            dustPositions[i*3] = (Math.random() - 0.5) * 8;
+            dustPositions[i*3+1] = -0.2;
+            dustPositions[i*3+2] = (Math.random() - 0.5) * 20 - 5;
+        }
+        dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+        const dustMat = new THREE.PointsMaterial({ color: 0xaa9988, size: 0.05, transparent: true, opacity: 0.5 });
+        const dustParticles = new THREE.Points(dustGeo, dustMat);
+        scene.add(dustParticles);
+        
+        // --- Animation Loop with car tilt (belok) & day/night---
+        let lastTime = performance.now();
+        let jitterTime = 0;
+        
+        function animate() {
+            const now = performance.now();
+            let delta = Math.min(0.033, (now - lastTime) / 1000);
+            if (delta <= 0) delta = 0.016;
+            lastTime = now;
+            
+            if (gameActive && !splashActive) {
+                // Player steering tilt (mobil belok posisi miring)
+                let steerFactor = (playerTargetX - currentPlayerX) / 2.5;
+                steerFactor = Math.min(0.65, Math.max(-0.65, steerFactor));
+                // smooth tilt
+                playerCar.rotation.z = -steerFactor * 0.55;
+                playerCar.rotation.y = steerFactor * 0.3;
+                // movement
+                currentPlayerX += (playerTargetX - currentPlayerX) * 0.25;
+                currentPlayerX = Math.min(maxX, Math.max(minX, currentPlayerX));
+                playerCar.position.x = currentPlayerX;
+                
+                // Update opponents
+                for (let i = opponents.length-1; i >= 0; i--) {
+                    const opp = opponents[i];
+                    opp.mesh.position.z += currentSpeed * delta;
+                    if (!opp.passedFlag && opp.mesh.position.z > 1.2) {
+                        opp.passedFlag = true;
+                        score++;
+                        updateScoreUI();
+                    }
+                    if (opp.mesh.position.z > 6.0 || opp.mesh.position.z < -18) {
+                        scene.remove(opp.mesh);
+                        opponents.splice(i,1);
+                        continue;
+                    }
+                    if (checkCollision(playerCar, opp.mesh)) {
+                        endGame();
+                    }
+                }
+                
+                // Spawn
+                spawnAccumulator += delta;
+                let dynamicDelay = baseSpawnDelay;
+                if (currentSpeed > 9) dynamicDelay = Math.max(0.45, baseSpawnDelay - 0.18);
+                if (spawnAccumulator >= dynamicDelay && opponents.length < 12) {
+                    spawnAccumulator = 0;
+                    spawnOpponent();
+                }
+                
+                // Scroll road & dust
+                roadTexture.offset.y += roadScrollSpeed * delta;
+                dustParticles.rotation.y += 0.8 * delta;
+                
+                // jitter retro
+                jitterTime += delta * 20;
+                const jitterX = Math.sin(jitterTime) * 0.002;
+                const jitterY = Math.cos(jitterTime * 1.3) * 0.0015;
+                camera.position.x += (0 - camera.position.x) * 0.1 + jitterX;
+                camera.position.y += (3.5 - camera.position.y) * 0.1 + jitterY;
+                camera.lookAt(0, 0.8, 2);
+            } else if (!splashActive) {
+                // game over idle
+                roadTexture.offset.y += 0.5 * delta;
+                dustParticles.rotation.y += 0.3 * delta;
+            }
+            
+            // dynamic light flicker retro
+            const time = Date.now() * 0.002;
+            if (nightMode) backLight.intensity = 0.7 + Math.sin(time) * 0.15;
+            else backLight.intensity = 0.5 + Math.sin(time) * 0.1;
+            
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+        
+        restartBtn.addEventListener('click', () => {
+            if (splashActive) return;
+            resetGame();
+            gameActive = true;
+            gameOverDiv.style.display = 'none';
+            opponents.forEach(opp => scene.remove(opp.mesh));
+            opponents = [];
+            score = 0;
+            updateScoreUI();
+            playerCar.position.x = 0;
+            currentPlayerX = 0;
+            playerTargetX = 0;
+            currentSpeed = 6.2;
+            if (nightMode) setDayNightMode(false);
+        });
+        
+        // resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // initial scene objects: trees etc
+        const createTree = (x, z) => {
+            const group = new THREE.Group();
+            const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), new THREE.MeshStandardMaterial({ color: 0x8b5a2b, flatShading: true }));
+            trunk.position.y = 0.4;
+            group.add(trunk);
+            const foliage = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.9, 5), new THREE.MeshStandardMaterial({ color: 0x5c9e3e, flatShading: true }));
+            foliage.position.y = 0.9;
+            group.add(foliage);
+            group.position.set(x, -0.2, z);
+            return group;
+        };
+        for (let i = -30; i <= 10; i+=5) {
+            scene.add(createTree(-7.2, i));
+            scene.add(createTree(7.2, i));
+        }
+        
+        // Lamp posts
+        const lightPoleMat = new THREE.MeshStandardMaterial({ color: 0xaa8866 });
+        for (let z = -15; z <= 8; z+=4.5) {
+            const poleL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 1.8, 3), lightPoleMat);
+            poleL.position.set(-5.2, 0.7, z);
+            scene.add(poleL);
+            const poleR = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 1.8, 3), lightPoleMat);
+            poleR.position.set(5.2, 0.7, z);
+            scene.add(poleR);
+        }
+        
+        animate();
+        console.log("🚦 REVAN PS1 RACER READY — SPLASH AKTIF");
+    </script>
+</body>
+</html>
